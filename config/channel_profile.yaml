@@ -1,0 +1,21 @@
+channel_name: Roberto Careca
+
+content_type:
+  - humor
+  - reacoes
+  - gameplay
+
+platforms:
+  - youtube
+  - tiktok
+  - instagram
+
+preferred_game_types:
+  - indie
+  - sandbox
+  - jogos engraçados
+  - jogos estranhos
+
+video_length_seconds:
+  min: 25
+  max: 60
