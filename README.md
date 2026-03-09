@@ -1,16 +1,60 @@
 # game-trend-analyzer
 
-# TrendGames (MVP local)
+TrendGames is a local MVP to rank games that are trending now and recommend what to cover next for your channel.
 
-Objetivo: identificar jogos em alta agora e recomendar os melhores para seu canal (YouTube Shorts / TikTok / Instagram Reels),
-com foco em descobrir tendencias "gringa" cedo e trazer pro Brasil.
+Current implementation status:
+- Working CLI pipeline: `ingest -> score -> recommend`
+- Local SQLite storage
+- Simulated ingestion for Twitch, YouTube, and Steam
+- Optional CSV import for extra platforms (TikTok/Instagram)
 
-## Requisitos
+## Requirements
 - Python 3.12+
 
 ## Setup (Windows PowerShell)
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+$env:PYTHONPATH = "src"
+```
+
+## Quick start
+```powershell
+python -m trendgames.cli run --top 10
+```
+
+Optional (editable install, if `setuptools` is available):
+```powershell
 pip install -e .
-copy .env.example .env
+trendgames run --top 10
+```
+
+## CLI commands
+Ingest one snapshot:
+```powershell
+python -m trendgames.cli ingest
+```
+
+Calculate score for latest snapshot:
+```powershell
+python -m trendgames.cli score
+```
+
+Show recommendations:
+```powershell
+python -m trendgames.cli recommend --top 10
+```
+
+Include CSV extra metrics:
+```powershell
+python -m trendgames.cli ingest --csv config\csv_templates\metrics_import_template.csv
+```
+
+## Config files
+- `config/channel_profile.yaml`: channel preferences used by fit score.
+- `config/games_seed.yaml`: initial game candidate list.
+- `config/csv_templates/metrics_import_template.csv`: optional manual metrics import template.
+
+## Notes
+- This MVP currently uses simulated platform data so the full loop can run offline.
+- Connector modules are already separated to replace simulation with real API calls later.
