@@ -5,6 +5,11 @@ from pathlib import Path
 import re
 import unicodedata
 
+_RE_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
+_RE_INT = re.compile(r"-?\d+")
+_RE_FLOAT = re.compile(r"-?\d+\.\d+")
+_RE_SLUG_STRIP = re.compile(r"[^a-zA-Z0-9]+")
+
 from trendgames.domain import ChannelProfile, GameSeed
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -148,16 +153,14 @@ def _load_simple_yaml_file(path: Path) -> object:
 def _parse_simple_yaml(text: str) -> object:
     lines: list[tuple[int, str]] = []
     for raw_line in text.splitlines():
-        if not raw_line.strip():
-            continue
         stripped = raw_line.lstrip()
-        if stripped.startswith("#"):
+        if not stripped or stripped.startswith("#"):
             continue
-        content = raw_line.split(" #", 1)[0].rstrip()
-        if not content.strip():
+        content = stripped.split(" #", 1)[0].rstrip()
+        if not content:
             continue
-        indent = len(content) - len(content.lstrip(" "))
-        lines.append((indent, content.strip()))
+        indent = len(raw_line) - len(stripped)
+        lines.append((indent, content))
 
     if not lines:
         return {}
@@ -232,7 +235,7 @@ def _parse_list(lines: list[tuple[int, str]], index: int, indent: int) -> tuple[
         if ":" in item_text and not item_text.startswith(("'", '"')):
             key, tail = item_text.split(":", 1)
             key = key.strip()
-            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_-]*", key):
+            if _RE_IDENTIFIER.fullmatch(key):
                 item_dict: dict[str, object] = {key: _parse_scalar(tail.strip()) if tail.strip() else None}
                 if index < len(lines) and lines[index][0] > indent:
                     child, index = _parse_block(lines, index, lines[index][0])
@@ -260,16 +263,16 @@ def _parse_scalar(value: str) -> object:
         if not inner:
             return []
         return [_parse_scalar(part.strip()) for part in inner.split(",")]
-    if re.fullmatch(r"-?\d+", stripped):
+    if _RE_INT.fullmatch(stripped):
         return int(stripped)
-    if re.fullmatch(r"-?\d+\.\d+", stripped):
+    if _RE_FLOAT.fullmatch(stripped):
         return float(stripped)
     return stripped
 
 
 def _to_str_list(value: object) -> list[str]:
     if isinstance(value, list):
-        return [str(item).strip() for item in value if str(item).strip()]
+        return [s for item in value if (s := str(item).strip())]
     if isinstance(value, str) and value.strip():
         return [value.strip()]
     return []
@@ -305,5 +308,5 @@ def _infer_tags(name: str) -> list[str]:
 
 def _slugify(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
-    slug = re.sub(r"[^a-zA-Z0-9]+", "-", normalized).strip("-").lower()
+    slug = _RE_SLUG_STRIP.sub("-", normalized).strip("-").lower()
     return slug or "game"

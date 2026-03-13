@@ -67,6 +67,8 @@ def init_db(connection: sqlite3.Connection) -> None:
             ON platform_metrics(snapshot_id);
         CREATE INDEX IF NOT EXISTS idx_platform_metrics_game
             ON platform_metrics(game_id);
+        CREATE INDEX IF NOT EXISTS idx_platform_metrics_snapshot_platform_type
+            ON platform_metrics(snapshot_id, platform, metric_type);
         CREATE INDEX IF NOT EXISTS idx_trend_scores_snapshot
             ON trend_scores(snapshot_id);
         """
@@ -233,7 +235,7 @@ def get_snapshot_metrics(connection: sqlite3.Connection, snapshot_id: int) -> li
                 "tags": _safe_json_loads(row["tags_json"], default=[]),
                 "platform": row["platform"],
                 "metric_type": row["metric_type"],
-                "value": float(row["value"]),
+                "value": row["value"],
                 "unit": row["unit"],
                 "raw": _safe_json_loads(row["raw_json"], default={}),
             }
@@ -270,11 +272,11 @@ def get_scores(connection: sqlite3.Connection, snapshot_id: int, limit: int = 10
                 "snapshot_id": row["snapshot_id"],
                 "game_id": row["game_id"],
                 "game_name": row["game_name"],
-                "score_total": float(row["score_total"]),
-                "score_popularity": float(row["score_popularity"]),
-                "score_growth": float(row["score_growth"]),
-                "score_multiplatform": float(row["score_multiplatform"]),
-                "score_fit": float(row["score_fit"]),
+                "score_total": row["score_total"],
+                "score_popularity": row["score_popularity"],
+                "score_growth": row["score_growth"],
+                "score_multiplatform": row["score_multiplatform"],
+                "score_fit": row["score_fit"],
                 "explanation": _safe_json_loads(row["explanation_json"], default={}),
             }
         )

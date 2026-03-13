@@ -43,27 +43,32 @@ def calculate_scores(
     }
     weight_sum = sum(weights.values()) or 1.0
 
+    preferred_tags = {item.casefold() for item in profile.preferred_game_types}
+    avoided_tags = {item.casefold() for item in profile.avoided_game_types}
+
     scores: list[TrendScore] = []
     for game_id, game_data in current.items():
         platform_values: dict[str, float] = game_data["platform_values"]  # type: ignore[assignment]
         tags: list[str] = game_data["tags"]  # type: ignore[assignment]
 
-        per_platform_pop = {
-            platform: pop_percentiles.get(platform, {}).get(game_id, 0.5)
-            for platform in platform_values
-        }
+        per_platform_pop: dict[str, float] = {}
+        per_platform_growth: dict[str, float] = {}
+        growth_delta_log: dict[str, float] = {}
+        strong_platforms: list[str] = []
+        for platform in platform_values:
+            pop_pct = pop_percentiles.get(platform, {}).get(game_id, 0.5)
+            growth_pct = growth_percentiles.get(platform, {}).get(game_id, 0.5)
+            per_platform_pop[platform] = pop_pct
+            per_platform_growth[platform] = growth_pct
+            growth_delta_log[platform] = round(growth_raw.get(platform, {}).get(game_id, 0.0), 6)
+            if pop_pct >= 0.70:
+                strong_platforms.append(platform)
+
         popularity_score = _mean_score(per_platform_pop.values())
-
-        per_platform_growth = {
-            platform: growth_percentiles.get(platform, {}).get(game_id, 0.5)
-            for platform in platform_values
-        }
         growth_score = _mean_score(per_platform_growth.values())
-
-        strong_platforms = [p for p, pct in per_platform_pop.items() if pct >= 0.70]
         multiplatform_score = min(100.0, float(len(strong_platforms)) * 35.0)
 
-        fit_score, fit_details = _fit_score(tags, profile)
+        fit_score, fit_details = _fit_score(tags, preferred_tags, avoided_tags)
 
         total = (
             weights["popularity"] * popularity_score
@@ -77,10 +82,7 @@ def calculate_scores(
             "strong_platforms": strong_platforms,
             "platform_percentiles": {k: round(v * 100, 2) for k, v in per_platform_pop.items()},
             "growth_percentiles": {k: round(v * 100, 2) for k, v in per_platform_growth.items()},
-            "growth_delta_log": {
-                platform: round(growth_raw.get(platform, {}).get(game_id, 0.0), 6)
-                for platform in platform_values
-            },
+            "growth_delta_log": growth_delta_log,
             "fit": fit_details,
             "missing_platforms": sorted(set(KNOWN_PLATFORMS) - set(platform_values)),
         }
@@ -196,20 +198,21 @@ def _percentile_rank(values_by_game: dict[str, float]) -> dict[str, float]:
     if not values_by_game:
         return {}
     if len(values_by_game) == 1:
-        only_game = next(iter(values_by_game))
-        return {only_game: 1.0}
+        return {next(iter(values_by_game)): 1.0}
 
     sorted_items = sorted(values_by_game.items(), key=lambda item: item[1])
-    positions_by_value: dict[float, list[int]] = defaultdict(list)
-    for index, (_, value) in enumerate(sorted_items):
-        positions_by_value[value].append(index)
-
     denominator = len(sorted_items) - 1
     result: dict[str, float] = {}
-    for game_id, value in values_by_game.items():
-        positions = positions_by_value[value]
-        avg_pos = sum(positions) / len(positions)
-        result[game_id] = avg_pos / denominator
+    i = 0
+    while i < len(sorted_items):
+        j = i + 1
+        val = sorted_items[i][1]
+        while j < len(sorted_items) and sorted_items[j][1] == val:
+            j += 1
+        avg_pct = (i + j - 1) / 2 / denominator
+        for k in range(i, j):
+            result[sorted_items[k][0]] = avg_pct
+        i = j
     return result
 
 
@@ -220,13 +223,10 @@ def _mean_score(values: object) -> float:
     return mean(numeric) * 100.0
 
 
-def _fit_score(tags: list[str], profile: ChannelProfile) -> tuple[float, dict[str, object]]:
+def _fit_score(tags: list[str], preferred_tags: set[str], avoided_tags: set[str]) -> tuple[float, dict[str, object]]:
     tag_set = {tag.casefold() for tag in tags}
-    preferred = {item.casefold() for item in profile.preferred_game_types}
-    avoided = {item.casefold() for item in profile.avoided_game_types}
-
-    preferred_hits = sorted(tag_set.intersection(preferred))
-    avoided_hits = sorted(tag_set.intersection(avoided))
+    preferred_hits = sorted(tag_set.intersection(preferred_tags))
+    avoided_hits = sorted(tag_set.intersection(avoided_tags))
 
     score = 50.0
     score += min(30.0, len(preferred_hits) * 12.0)
