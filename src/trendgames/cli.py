@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 import sys
 
@@ -11,7 +12,9 @@ from trendgames.ingestion.csv_import import import_csv_metrics
 from trendgames.ingestion.steam import collect_steam_metrics
 from trendgames.ingestion.twitch import collect_twitch_metrics
 from trendgames.ingestion.youtube import collect_youtube_metrics
+from trendgames.ingestion.youtube_api import collect_reference_channel_metrics
 from trendgames.scoring import calculate_scores
+from trendgames.scout_scoring import calculate_scout_scores, format_scout_report
 from trendgames.settings import (
     DEFAULT_CHANNEL_PROFILE_PATH,
     DEFAULT_DB_PATH,
@@ -19,6 +22,8 @@ from trendgames.settings import (
     load_channel_profile,
     load_games_seed,
 )
+
+_ENV_YOUTUBE_API_KEY = "YOUTUBE_API_KEY"
 from trendgames.storage import (
     connect,
     create_snapshot,
@@ -46,6 +51,8 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(_command_recommend(args))
     if args.command == "run":
         raise SystemExit(_command_run(args))
+    if args.command == "scout":
+        raise SystemExit(_command_scout(args))
 
     parser.print_help()
     raise SystemExit(1)
@@ -61,7 +68,9 @@ def _build_parser() -> argparse.ArgumentParser:
     ingest_parser = subparsers.add_parser("ingest", help="Create one snapshot with platform metrics.")
     ingest_parser.add_argument("--db", default=str(DEFAULT_DB_PATH), help="SQLite path.")
     ingest_parser.add_argument("--seed", default=str(DEFAULT_GAMES_SEED_PATH), help="Games seed YAML.")
+    ingest_parser.add_argument("--profile", default=str(DEFAULT_CHANNEL_PROFILE_PATH), help="Channel profile YAML.")
     ingest_parser.add_argument("--csv", default="", help="Optional CSV file with extra metrics.")
+    ingest_parser.add_argument("--youtube-api-key", default="", help="YouTube Data API v3 key (or set YOUTUBE_API_KEY env var).")
 
     score_parser = subparsers.add_parser("score", help="Calculate and persist score for one snapshot.")
     score_parser.add_argument("--db", default=str(DEFAULT_DB_PATH), help="SQLite path.")
@@ -85,6 +94,15 @@ def _build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--profile", default=str(DEFAULT_CHANNEL_PROFILE_PATH), help="Channel profile YAML.")
     run_parser.add_argument("--csv", default="", help="Optional CSV file with extra metrics.")
     run_parser.add_argument("--top", type=int, default=10, help="How many games to show.")
+    run_parser.add_argument("--youtube-api-key", default="", help="YouTube Data API v3 key (or set YOUTUBE_API_KEY env var).")
+
+    scout_parser = subparsers.add_parser("scout", help="Game Scout: busca jogos em alta nos canais de referencia.")
+    scout_parser.add_argument("--db", default=str(DEFAULT_DB_PATH), help="SQLite path.")
+    scout_parser.add_argument("--seed", default=str(DEFAULT_GAMES_SEED_PATH), help="Games seed YAML.")
+    scout_parser.add_argument("--profile", default=str(DEFAULT_CHANNEL_PROFILE_PATH), help="Channel profile YAML.")
+    scout_parser.add_argument("--csv", default="", help="Optional CSV file with extra metrics.")
+    scout_parser.add_argument("--top", type=int, default=10, help="How many games to show.")
+    scout_parser.add_argument("--youtube-api-key", default="", help="YouTube Data API v3 key (or set YOUTUBE_API_KEY env var).")
 
     return parser
 
@@ -92,22 +110,33 @@ def _build_parser() -> argparse.ArgumentParser:
 def _command_ingest(args: argparse.Namespace) -> int:
     db_path = Path(args.db).resolve()
     seed_path = Path(args.seed).resolve()
+    profile_path = Path(args.profile).resolve()
     csv_path = Path(args.csv).resolve() if args.csv else None
+    youtube_api_key = getattr(args, "youtube_api_key", "") or os.environ.get(_ENV_YOUTUBE_API_KEY, "")
 
     games = load_games_seed(seed_path)
+    profile = load_channel_profile(profile_path)
     collected_at = datetime.now(timezone.utc).replace(microsecond=0)
+
+    collected = []
+    collected.extend(collect_twitch_metrics(games, collected_at))
+    collected.extend(collect_youtube_metrics(games, collected_at))
+    collected.extend(collect_steam_metrics(games, collected_at))
+    if csv_path:
+        collected.extend(import_csv_metrics(csv_path, games))
+
+    if youtube_api_key and profile.reference_channels:
+        print(f"Fetching reference channels: {', '.join(profile.reference_channels)}")
+        ref_metrics = collect_reference_channel_metrics(
+            profile.reference_channels, games, youtube_api_key, collected_at
+        )
+        collected.extend(ref_metrics)
 
     with connect(db_path) as connection:
         init_db(connection)
         upsert_games(connection, games)
-        snapshot_id = create_snapshot(connection, status="ok", notes="simulated ingestion", collected_at=collected_at)
-
-        collected = []
-        collected.extend(collect_twitch_metrics(games, collected_at))
-        collected.extend(collect_youtube_metrics(games, collected_at))
-        collected.extend(collect_steam_metrics(games, collected_at))
-        if csv_path:
-            collected.extend(import_csv_metrics(csv_path, games))
+        notes = "simulated ingestion" if not youtube_api_key else "simulated + reference channels"
+        snapshot_id = create_snapshot(connection, status="ok", notes=notes, collected_at=collected_at)
 
         metrics = [
             PlatformMetric(
@@ -206,6 +235,39 @@ def _command_run(args: argparse.Namespace) -> int:
             return 1
         rows = get_scores(connection, snapshot_id, limit=top_n)
     _print_recommendations(snapshot_id, rows)
+    return 0
+
+
+def _command_scout(args: argparse.Namespace) -> int:
+    # Step 1: Run ingestion (reuse _command_ingest logic)
+    ingest_code = _command_ingest(args)
+    if ingest_code != 0:
+        return ingest_code
+
+    db_path = Path(args.db).resolve()
+    seed_path = Path(args.seed).resolve()
+    profile_path = Path(args.profile).resolve()
+    top_n = max(1, int(args.top))
+
+    games = load_games_seed(seed_path)
+    profile = load_channel_profile(profile_path)
+
+    # Step 2: Fetch metrics from the latest snapshot
+    with connect(db_path) as connection:
+        init_db(connection)
+        snapshot_id = get_latest_snapshot_id(connection)
+        if snapshot_id is None:
+            print("No snapshots found after ingestion.")
+            return 1
+        metrics = get_snapshot_metrics(connection, snapshot_id)
+
+    # Step 3: Calculate scout scores
+    scores = calculate_scout_scores(games, metrics, profile, top_n=top_n)
+
+    # Step 4: Print report
+    channels_checked = len(profile.reference_channels)
+    report = format_scout_report(scores, profile, channels_checked)
+    print(report)
     return 0
 
 

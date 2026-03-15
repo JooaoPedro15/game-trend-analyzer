@@ -1,13 +1,87 @@
 games:
-  - Fortnite
-  - Minecraft
-  - Roblox
-  - Valorant
-  - Counter-Strike 2
-  - League of Legends
-  - EA Sports FC 25
-  - Grand Theft Auto V
-  - Call of Duty: Warzone
-  - Helldivers 2
-  - Stardew Valley
-  - Palworld
+  - id: balatro
+    name: Balatro
+    tags: [indie, puzzle, satisfying, cartas]
+    steam_appid: 2379780
+    youtube_queries: ["balatro gameplay", "balatro shorts"]
+
+  - id: buckshot_roulette
+    name: Buckshot Roulette
+    tags: [horror, indie, bizarro, WTF]
+    steam_appid: 2835570
+    youtube_queries: ["buckshot roulette gameplay", "buckshot roulette horror"]
+
+  - id: the_finals
+    name: The Finals
+    tags: [acao, shooter, destruicao]
+    steam_appid: 2073850
+    youtube_queries: ["the finals gameplay", "the finals funny moments"]
+
+  - id: lethal_company
+    name: Lethal Company
+    tags: [horror, cooperativo, bizarro, indie]
+    steam_appid: 1966720
+    youtube_queries: ["lethal company gameplay", "lethal company funny"]
+
+  - id: content_warning
+    name: Content Warning
+    tags: [horror, cooperativo, WTF, indie, bizarro]
+    steam_appid: 2881650
+    youtube_queries: ["content warning gameplay", "content warning shorts"]
+
+  - id: superliminal
+    name: Superliminal
+    tags: [puzzle, indie, satisfying, curioso]
+    steam_appid: 1049410
+    youtube_queries: ["superliminal gameplay", "superliminal puzzle"]
+
+  - id: i_am_fish
+    name: I Am Fish
+    tags: [indie, bizarro, WTF, satisfying]
+    steam_appid: 1360630
+    youtube_queries: ["i am fish gameplay", "i am fish funny"]
+
+  - id: slime_rancher_2
+    name: Slime Rancher 2
+    tags: [indie, satisfying, curioso, casual]
+    steam_appid: 1657630
+    youtube_queries: ["slime rancher 2 gameplay"]
+
+  - id: inscription
+    name: Inscryption
+    tags: [puzzle, horror, indie, cartas, curioso]
+    steam_appid: 1092790
+    youtube_queries: ["inscryption gameplay", "inscryption mystery"]
+
+  - id: cult_of_the_lamb
+    name: Cult of the Lamb
+    tags: [indie, bizarro, roguelite, curioso]
+    steam_appid: 1313140
+    youtube_queries: ["cult of the lamb gameplay", "cult of the lamb shorts"]
+
+  - id: pizza_tower
+    name: Pizza Tower
+    tags: [indie, acao, satisfying, WTF, bizarro]
+    steam_appid: 2231450
+    youtube_queries: ["pizza tower gameplay", "pizza tower funny"]
+
+  - id: worlds_hardest_game
+    name: World's Hardest Game
+    tags: [puzzle, frustrante, curioso, casual]
+    youtube_queries: ["worlds hardest game gameplay", "hardest game shorts"]
+
+  - id: poppy_playtime
+    name: Poppy Playtime
+    tags: [horror, indie, curioso, WTF]
+    steam_appid: 1721470
+    youtube_queries: ["poppy playtime gameplay", "poppy playtime horror shorts"]
+
+  - id: fortnite
+    name: Fortnite
+    tags: [acao, shooter, casual, construcao]
+    youtube_queries: ["fortnite gameplay br", "fortnite shorts"]
+
+  - id: minecraft
+    name: Minecraft
+    tags: [sandbox, criacao, casual, nostalgia]
+    youtube_queries: ["minecraft gameplay", "minecraft shorts funny"]

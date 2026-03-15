@@ -22,6 +22,7 @@ class ChannelProfile:
     avoided_game_types: list[str] = field(default_factory=list)
     video_length_min: int | None = None
     video_length_max: int | None = None
+    reference_channels: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

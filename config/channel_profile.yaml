@@ -1,9 +1,9 @@
 channel_name: Roberto Careca
 
 content_type:
-  - humor
-  - reacoes
   - gameplay
+  - shorts
+  - vertical
 
 platforms:
   - youtube
@@ -12,10 +12,31 @@ platforms:
 
 preferred_game_types:
   - indie
-  - sandbox
-  - jogos engraçados
-  - jogos estranhos
+  - puzzle
+  - horror
+  - bizarro
+  - satisfying
+  - WTF
+  - anime
+  - curioso
+  - escape
+
+avoided_game_types:
+  - FPS generico
+  - esporte realista
+  - estrategia por turnos
+  - RPG longo
+  - MOBA
 
 video_length_seconds:
-  min: 25
+  min: 15
   max: 60
+
+# Canais de referência: criadores do mesmo nicho (gameplay vertical curto PT-BR)
+# Prioridade: lohzao e cofflei são os mais importantes
+reference_channels:
+  - "@lohzao"
+  - "@cofflei"
+  - "@elcamacho24"
+  - "@matsukiiii0"
+  - "@sev7njogos"
