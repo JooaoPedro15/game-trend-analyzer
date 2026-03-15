@@ -1,8 +1,9 @@
-"""TikTok reference channel connector — uses DuckDuckGo HTML search (no API key needed).
+"""TikTok reference channel connector — DuckDuckGo targeted search (no API key).
 
-For each TikTok creator, searches for their recent game content and matches
-against the games seed. Since TikTok has no public API, this is a best-effort
-approach: it searches the web for what each creator is covering.
+Strategy: for each top-scoring game × each TikTok creator, search:
+  "{creator_handle}" "{game_name}" tiktok
+This checks if a specific creator has made TikTok content about a game.
+Total queries = len(channels) × MAX_GAMES_TO_CHECK (default: 5 × 5 = 25).
 """
 
 from __future__ import annotations
@@ -22,52 +23,53 @@ from trendgames.ingestion import CollectedMetric
 
 _DDG_URL = "https://html.duckduckgo.com/html/"
 _REQUEST_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml",
     "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
 }
-_REQUEST_DELAY = 2.0  # seconds between requests (be polite)
+_REQUEST_DELAY = 1.5  # seconds between DDG requests
+_MAX_GAMES = 8        # only check the most tag-relevant games per channel
+
+# Tags that indicate a game is likely to appear on TikTok gaming content
+_VIRAL_TAG_WEIGHTS: dict[str, int] = {
+    "wtf": 4, "horror": 3, "bizarro": 3, "puzzle": 2,
+    "satisfying": 2, "curioso": 2, "escape": 2,
+    "indie": 1, "cartas": 1, "roguelite": 1,
+}
 
 
 def collect_tiktok_reference_metrics(
     channels: Sequence[str],
     games: Sequence[GameSeed],
     collected_at: datetime,
+    max_games: int = _MAX_GAMES,
     request_delay: float = _REQUEST_DELAY,
 ) -> list[CollectedMetric]:
-    """Search DuckDuckGo for each TikTok creator and count which games they cover."""
+    """For each TikTok creator, check which top games they appear to cover."""
     if not channels:
         return []
 
+    top_games = _select_top_games(games, max_games)
     game_coverage: dict[str, int] = {game.game_id: 0 for game in games}
-    game_lookup = _build_game_lookup(games)
     channels_ok = 0
+    request_count = 0
 
-    for i, channel in enumerate(channels):
-        if i > 0:
-            time.sleep(request_delay)
-
+    for channel in channels:
         handle = channel.strip().lstrip("@")
-        try:
-            text = _fetch_channel_content(handle)
-            if not text:
-                print(f"  [tiktok_search] @{handle}: sem resultados")
-                continue
+        found_for_channel: list[str] = []
 
-            matched: set[str] = set()
-            for key, game_id in game_lookup.items():
-                if key in _normalize(text):
-                    matched.add(game_id)
+        for game in top_games:
+            if request_count > 0:
+                time.sleep(request_delay)
+            request_count += 1
 
-            for game_id in matched:
-                game_coverage[game_id] += 1
+            if _creator_covers_game(handle, game.name):
+                game_coverage[game.game_id] += 1
+                found_for_channel.append(game.name)
 
-            channels_ok += 1
-            found = [g for g in games if g.game_id in matched]
-            names = ", ".join(g.name for g in found) if found else "nenhum"
-            print(f"  [tiktok_search] @{handle}: jogos encontrados -> {names}")
-
-        except Exception as exc:
-            print(f"  [tiktok_search] Erro ao buscar @{handle}: {exc}")
+        channels_ok += 1
+        names = ", ".join(found_for_channel) if found_for_channel else "nenhum"
+        print(f"  [tiktok_search] @{handle}: jogos encontrados -> {names}")
 
     if channels_ok == 0:
         return []
@@ -86,9 +88,9 @@ def collect_tiktok_reference_metrics(
     ]
 
 
-def _fetch_channel_content(handle: str) -> str:
-    """Query DuckDuckGo for what games a TikTok creator is covering."""
-    query = f"tiktok @{handle} gameplay"
+def _creator_covers_game(handle: str, game_name: str) -> bool:
+    """Return True if DuckDuckGo finds evidence this TikTok creator covered the game."""
+    query = f'"{handle}" "{game_name}" tiktok'
     params = urllib.parse.urlencode({"q": query, "kl": "br-pt"})
     url = f"{_DDG_URL}?{params}"
 
@@ -97,29 +99,33 @@ def _fetch_channel_content(handle: str) -> str:
         with urllib.request.urlopen(req, timeout=12) as resp:
             body = resp.read().decode("utf-8", errors="replace")
     except (urllib.error.URLError, OSError):
-        return ""
+        return False
 
-    # Strip HTML tags and decode entities
-    text = re.sub(r"<[^>]+>", " ", body)
-    return html_lib.unescape(text)
+    # Strip tags, decode entities
+    text = html_lib.unescape(re.sub(r"<[^>]+>", " ", body)).lower()
+
+    # Positive signal: both the handle and game name appear in the results
+    handle_norm = _normalize(handle)
+    game_norm = _normalize(game_name)
+
+    # Must find both handle and game name in the result text
+    # Also require at least one "tiktok" reference to avoid false positives
+    return (
+        handle_norm in text
+        and game_norm in text
+        and "tiktok" in text
+        and "no results" not in text
+    )
 
 
-def _build_game_lookup(games: Sequence[GameSeed]) -> dict[str, str]:
-    """Map normalized name variants → game_id."""
-    lookup: dict[str, str] = {}
-    for game in games:
-        _add(lookup, _normalize(game.name), game.game_id)
-        for query in game.youtube_queries:
-            _add(lookup, _normalize(query), game.game_id)
-        first_word = game.name.split()[0]
-        if len(first_word) >= 4:
-            _add(lookup, _normalize(first_word), game.game_id)
-    return lookup
-
-
-def _add(lookup: dict[str, str], key: str, value: str) -> None:
-    if key and key not in lookup:
-        lookup[key] = value
+def _select_top_games(games: Sequence[GameSeed], n: int) -> list[GameSeed]:
+    """Return top N games ranked by viral tag weight (most likely to appear on TikTok)."""
+    scored = [
+        (sum(_VIRAL_TAG_WEIGHTS.get(t.lower(), 0) for t in g.tags), g)
+        for g in games
+    ]
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [g for _, g in scored[:n]]
 
 
 def _normalize(text: str) -> str:

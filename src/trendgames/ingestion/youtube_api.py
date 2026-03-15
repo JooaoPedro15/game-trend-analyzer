@@ -158,5 +158,13 @@ def _api_get(url: str) -> dict | None:
     try:
         with urllib.request.urlopen(url, timeout=10) as response:
             return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        try:
+            msg = json.loads(body).get("error", {}).get("message", body[:120])
+        except Exception:
+            msg = body[:120]
+        print(f"  [youtube_api] HTTP {exc.code}: {msg}")
+        return None
     except (urllib.error.URLError, json.JSONDecodeError, OSError):
         return None
