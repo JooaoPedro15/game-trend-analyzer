@@ -108,7 +108,10 @@ def load_channel_profile(path: Path | None = None) -> ChannelProfile:
         avoided_game_types=_to_str_list(data.get("avoided_game_types")),
         video_length_min=_to_int(video_length.get("min")),
         video_length_max=_to_int(video_length.get("max")),
-        reference_channels=_to_str_list(data.get("reference_channels")),
+        reference_channels_youtube=_to_str_list(
+            data.get("reference_channels_youtube") or data.get("reference_channels")
+        ),
+        reference_channels_tiktok=_to_str_list(data.get("reference_channels_tiktok")),
     )
 
 

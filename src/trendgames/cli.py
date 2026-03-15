@@ -12,6 +12,7 @@ from trendgames.ingestion.csv_import import import_csv_metrics
 from trendgames.ingestion.steam import collect_steam_metrics
 from trendgames.ingestion.twitch import collect_twitch_metrics
 from trendgames.ingestion.youtube import collect_youtube_metrics
+from trendgames.ingestion.tiktok_search import collect_tiktok_reference_metrics
 from trendgames.ingestion.youtube_api import collect_reference_channel_metrics
 from trendgames.scoring import calculate_scores
 from trendgames.scout_scoring import calculate_scout_scores, format_scout_report
@@ -125,17 +126,25 @@ def _command_ingest(args: argparse.Namespace) -> int:
     if csv_path:
         collected.extend(import_csv_metrics(csv_path, games))
 
-    if youtube_api_key and profile.reference_channels:
-        print(f"Fetching reference channels: {', '.join(profile.reference_channels)}")
-        ref_metrics = collect_reference_channel_metrics(
-            profile.reference_channels, games, youtube_api_key, collected_at
+    if youtube_api_key and profile.reference_channels_youtube:
+        print(f"YouTube refs: {', '.join(profile.reference_channels_youtube)}")
+        ref_yt = collect_reference_channel_metrics(
+            profile.reference_channels_youtube, games, youtube_api_key, collected_at
         )
-        collected.extend(ref_metrics)
+        collected.extend(ref_yt)
+
+    if profile.reference_channels_tiktok:
+        print(f"TikTok refs: {', '.join(profile.reference_channels_tiktok)}")
+        ref_tt = collect_tiktok_reference_metrics(
+            profile.reference_channels_tiktok, games, collected_at
+        )
+        collected.extend(ref_tt)
 
     with connect(db_path) as connection:
         init_db(connection)
         upsert_games(connection, games)
-        notes = "simulated ingestion" if not youtube_api_key else "simulated + reference channels"
+        has_refs = bool(youtube_api_key or profile.reference_channels_tiktok)
+        notes = "simulated + reference channels" if has_refs else "simulated ingestion"
         snapshot_id = create_snapshot(connection, status="ok", notes=notes, collected_at=collected_at)
 
         metrics = [
@@ -265,7 +274,7 @@ def _command_scout(args: argparse.Namespace) -> int:
     scores = calculate_scout_scores(games, metrics, profile, top_n=top_n)
 
     # Step 4: Print report
-    channels_checked = len(profile.reference_channels)
+    channels_checked = len(profile.reference_channels_youtube) + len(profile.reference_channels_tiktok)
     report = format_scout_report(scores, profile, channels_checked)
     print(report)
     return 0

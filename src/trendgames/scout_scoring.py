@@ -107,23 +107,21 @@ def calculate_scout_scores(
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+_REFERENCE_PLATFORMS = {"reference_channels", "reference_channels_youtube", "reference_channels_tiktok"}
+
+
 def _build_coverage_map(metrics: list[dict[str, object]]) -> dict[str, dict[str, Any]]:
-    """Extract coverage_count and covered_by channels from reference_channels metrics."""
+    """Aggregate coverage_count across all reference channel platforms (YouTube + TikTok)."""
     result: dict[str, dict[str, Any]] = {}
     for row in metrics:
-        if str(row.get("platform")) != "reference_channels":
+        if str(row.get("platform")) not in _REFERENCE_PLATFORMS:
             continue
         if str(row.get("metric_type")) != "coverage_count":
             continue
         game_id = str(row["game_id"])
         count = int(float(row.get("value", 0)))
-        raw = row.get("raw", {})
-        channels: list[str] = []
-        if isinstance(raw, dict):
-            channels = raw.get("covered_by", [])
-            if not isinstance(channels, list):
-                channels = []
-        result[game_id] = {"count": count, "channels": channels}
+        entry = result.setdefault(game_id, {"count": 0, "channels": []})
+        entry["count"] += count
     return result
 
 
@@ -239,9 +237,14 @@ def format_scout_report(
     # Channels checked
     lines.append("")
     lines.append("CANAIS CHECADOS:")
-    for ch in profile.reference_channels:
-        handle = ch.strip().lstrip("@")
-        lines.append(f"  * {ch} ({handle})")
+    if profile.reference_channels_tiktok:
+        lines.append("  TikTok:")
+        for ch in profile.reference_channels_tiktok:
+            lines.append(f"    * {ch}")
+    if profile.reference_channels_youtube:
+        lines.append("  YouTube:")
+        for ch in profile.reference_channels_youtube:
+            lines.append(f"    * {ch}")
 
     # Table header
     lines.append("")

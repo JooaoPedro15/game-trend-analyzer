@@ -32,11 +32,27 @@ video_length_seconds:
   min: 15
   max: 60
 
-# Canais de referência: criadores do mesmo nicho (gameplay vertical curto PT-BR)
-# Prioridade: lohzao e cofflei são os mais importantes
-reference_channels:
+# Canais TikTok de referencia (mesmo nicho — gameplay vertical curto PT-BR)
+# Prioridade: lohzao e cofflei sao os mais importantes
+reference_channels_tiktok:
   - "@lohzao"
   - "@cofflei"
   - "@elcamacho24"
   - "@matsukiiii0"
   - "@sev7njogos"
+
+# Canais YouTube de referencia (criadores similares no YouTube)
+# Requer: --youtube-api-key ou YOUTUBE_API_KEY
+reference_channels_youtube:
+  - "@TexHS"
+  - "@T3ddySQueGames"
+  - "@capjoga"
+  - "@DarkViperAU"
+  - "@markiplier"
+  - "@Sauceddie"
+  - "@Jazzghost"
+  - "@jacksepticeye"
+  - "@CellbitLives"
+  - "@alanzoka"
+  - "@kksaiko"
+  - "@SMii7Y"

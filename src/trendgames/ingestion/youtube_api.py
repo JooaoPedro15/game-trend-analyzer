@@ -13,6 +13,7 @@ from trendgames.domain import GameSeed
 from trendgames.ingestion import CollectedMetric
 
 _YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3"
+_CHANNEL_URL_SUFFIXES = ("/videos", "/shorts", "/playlists", "/community", "/about", "/channels")
 
 
 def collect_reference_channel_metrics(
@@ -52,7 +53,7 @@ def collect_reference_channel_metrics(
         CollectedMetric(
             game_id=game.game_id,
             game_name=game.name,
-            platform="reference_channels",
+            platform="reference_channels_youtube",
             metric_type="coverage_count",
             value=float(game_coverage.get(game.game_id, 0)),
             unit="videos",
@@ -84,6 +85,12 @@ def _add_if_nonempty(lookup: dict[str, str], key: str, value: str) -> None:
 def _resolve_channel_id(channel_input: str, api_key: str) -> str | None:
     """Resolve a handle (@foo), URL, or bare channel ID to a YouTube channel ID."""
     stripped = channel_input.strip()
+
+    # Strip known channel page suffixes (e.g. /videos, /shorts)
+    for suffix in _CHANNEL_URL_SUFFIXES:
+        if stripped.endswith(suffix):
+            stripped = stripped[: -len(suffix)]
+            break
 
     # Already a channel ID (starts with UC, 24 chars total)
     if re.match(r"^UC[\w-]{22}$", stripped):

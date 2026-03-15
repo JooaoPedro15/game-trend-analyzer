@@ -13,9 +13,14 @@ PLATFORM_PRIMARY_METRICS: dict[str, tuple[str, ...]] = {
     "tiktok": ("attention_views", "hashtag_rank"),
     "instagram": ("attention_views", "creation_uploads"),
     "reference_channels": ("coverage_count",),
+    "reference_channels_youtube": ("coverage_count",),
+    "reference_channels_tiktok": ("coverage_count",),
 }
 
-KNOWN_PLATFORMS = ("twitch", "youtube", "steam", "tiktok", "instagram", "reference_channels")
+KNOWN_PLATFORMS = (
+    "twitch", "youtube", "steam", "tiktok", "instagram",
+    "reference_channels", "reference_channels_youtube", "reference_channels_tiktok",
+)
 
 
 def calculate_scores(
