@@ -111,7 +111,7 @@ _REFERENCE_PLATFORMS = {"reference_channels", "reference_channels_youtube", "ref
 
 
 def _build_coverage_map(metrics: list[dict[str, object]]) -> dict[str, dict[str, Any]]:
-    """Aggregate coverage_count across all reference channel platforms (YouTube + TikTok)."""
+    """Aggregate coverage_count across all reference channel platforms (YouTube)."""
     result: dict[str, dict[str, Any]] = {}
     for row in metrics:
         if str(row.get("platform")) not in _REFERENCE_PLATFORMS:
@@ -123,6 +123,7 @@ def _build_coverage_map(metrics: list[dict[str, object]]) -> dict[str, dict[str,
         entry = result.setdefault(game_id, {"count": 0, "channels": []})
         entry["count"] += count
     return result
+
 
 
 def _score_from_tags(
@@ -168,7 +169,8 @@ def _platform_pct(tag_set: set[str], relevant_tags: set[str], base: int) -> int:
 
 def _generate_hashtags(game_name: str, tags: list[str]) -> str:
     """Generate relevant hashtags for the game."""
-    hashtags = [f"#{game_name.replace(' ', '').replace("'", '')}"]
+    clean_name = game_name.replace(" ", "").replace("'", "")
+    hashtags = [f"#{clean_name}"]
 
     tag_hashtag_map = {
         "horror": "#HorrorGames",
