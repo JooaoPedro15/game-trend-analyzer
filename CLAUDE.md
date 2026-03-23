@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TrendGames é uma ferramenta local para criadores de conteúdo de gameplay vertical (TikTok/Shorts/Reels). Ingere métricas de tendência de múltiplas plataformas e recomenda quais jogos cobrir. Escrito em Python 3.12+ com **zero dependências externas** (stdlib only, incluindo YAML parser customizado).
+TrendGames is a local tool for vertical gameplay content creators (TikTok/Shorts/Reels). It ingests trend metrics from multiple platforms and recommends which games to cover. Written in Python 3.12+ with **zero external dependencies** (stdlib only, including a custom YAML parser).
 
-**Canal alvo:** Roberto Careca — gameplay vertical PT-BR, nicho indie/puzzle/bizarro/horror.
+**Target channel:** Roberto Careca — vertical gameplay PT-BR, indie/puzzle/weird/horror niche.
 
 ## Commands
 
@@ -16,97 +16,97 @@ python -m venv .venv
 source .venv/Scripts/activate   # Windows (Git Bash)
 export PYTHONPATH=src
 
-# Pipeline completo (ingest → score → recommend)
+# Full pipeline (ingest → score → recommend)
 python -m trendgames.cli run --top 10
 
-# Comando scout — relatório game-scout com scoring vertical
+# Scout command — game-scout report with vertical scoring
 python -m trendgames.cli scout --top 10
 
-# Scout com cobertura real dos canais YouTube de referência
+# Scout with real coverage from YouTube reference channels
 python -m trendgames.cli scout --youtube-api-key YOUR_KEY --top 10
-# Ou: export YOUTUBE_API_KEY=YOUR_KEY
+# Or: export YOUTUBE_API_KEY=YOUR_KEY
 
-# Comandos individuais
+# Individual commands
 python -m trendgames.cli ingest
 python -m trendgames.cli score
 python -m trendgames.cli recommend --top 10
 
-# CSV import para métricas manuais (ex: cobertura TikTok registrada manualmente)
+# CSV import for manual metrics (e.g.: TikTok coverage recorded manually)
 python -m trendgames.cli ingest --csv config/csv_templates/metrics_import_template.csv
 
-# Editable install (alternativa ao PYTHONPATH)
+# Editable install (alternative to PYTHONPATH)
 pip install -e .
 trendgames scout --youtube-api-key YOUR_KEY --top 10
 ```
 
-Não há testes ou linting configurados.
+No tests or linting are configured.
 
 ## Architecture
 
 **3-layer pipeline:** Ingestion → Scoring → Serving (CLI)
 
 ### Ingestion Layer (`src/trendgames/ingestion/`)
-Conectores coletam métricas em snapshots no SQLite. Por padrão usam **simulação determinística** (SHA256 reproduzível) para desenvolvimento offline.
+Connectors collect metrics in snapshots into SQLite. By default they use **deterministic simulation** (reproducible SHA256) for offline development.
 
-| Arquivo | Plataforma | Descrição |
-|---------|-----------|-----------|
-| `twitch.py` | Twitch | Simulado |
-| `youtube.py` | YouTube | Simulado |
-| `steam.py` | Steam | Simulado |
-| `youtube_api.py` | `reference_channels_youtube` | **Real** — YouTube Data API v3. Busca vídeos recentes dos canais de referência e conta cobertura por jogo. |
-| `tiktok_search.py` | TikTok | **Limitado** — TikTok não tem API pública. Emite mensagem de limitação. Cobertura TikTok pode ser registrada manualmente via CSV. |
-| `csv_import.py` | qualquer | Import manual de métricas via CSV |
+| File | Platform | Description |
+|------|----------|-------------|
+| `twitch.py` | Twitch | Simulated |
+| `youtube.py` | YouTube | Simulated |
+| `steam.py` | Steam | Simulated |
+| `youtube_api.py` | `reference_channels_youtube` | **Real** — YouTube Data API v3. Fetches recent videos from reference channels and counts coverage per game. |
+| `tiktok_search.py` | TikTok | **Limited** — TikTok has no public API. Emits a limitation message. TikTok coverage can be recorded manually via CSV. |
+| `csv_import.py` | any | Manual metrics import via CSV |
 
 ### Scout Layer (`src/trendgames/scout_scoring.py`)
-Fórmula otimizada para conteúdo vertical curto:
-- **Viral Vertical (40%)**: tags WTF/horror/bizarro/puzzle + boost por cobertura dos canais de referência
-- **Curiosidade (25%)**: tags curioso/WTF/bizarro/escape/puzzle
-- **Funil p/ Vídeo Longo (20%)**: tags indie/narrativa/roguelite/cartas/horror
-- **Facilidade de Produção (15%)**: tags casual/puzzle/satisfying vs shooter/moba/competitivo
+Formula optimized for short vertical content:
+- **Viral Vertical (40%)**: WTF/horror/weird/puzzle tags + boost for reference channel coverage
+- **Curiosity (25%)**: curious/WTF/weird/escape/puzzle tags
+- **Funnel to Long Video (20%)**: indie/narrative/roguelite/cards/horror tags
+- **Production Ease (15%)**: casual/puzzle/satisfying tags vs shooter/moba/competitive
 
-Urgência baseada em `coverage_count` (cobertura pelos canais YouTube de referência):
-- `coverage_count ≥ 2` → **GRAVAR AGORA**
+Urgency based on `coverage_count` (coverage by YouTube reference channels):
+- `coverage_count >= 2` → **GRAVAR AGORA**
 - `coverage_count == 1` → **GRAVAR ESSA SEMANA**
-- `score ≥ 7.0` → **PODE PLANEJAR**
+- `score >= 7.0` → **PODE PLANEJAR**
 - else → **FICAR DE OLHO**
 
 ### Scoring Layer (`src/trendgames/scoring.py`)
-Scoring genérico (usado pelo `run`/`recommend`):
-- **Popularity (40%)**: percentile ranking por plataforma
-- **Growth (30%)**: log1p delta vs snapshot anterior
-- **Multiplatform (20%)**: count de plataformas "fortes" (≥70th percentile) × 35
-- **Fit (0-10%)**: match de tags contra preferências/evitados do `channel_profile.yaml`
+Generic scoring (used by `run`/`recommend`):
+- **Popularity (40%)**: percentile ranking per platform
+- **Growth (30%)**: log1p delta vs previous snapshot
+- **Multiplatform (20%)**: count of "strong" platforms (>=70th percentile) × 35
+- **Fit (0-10%)**: tag match against preferred/avoided from `channel_profile.yaml`
 
 ### Storage (`src/trendgames/storage.py`)
-SQLite em `data/trendgames.db`. Tabelas: `games`, `snapshots`, `platform_metrics`, `trend_scores`.
+SQLite at `data/trendgames.db`. Tables: `games`, `snapshots`, `platform_metrics`, `trend_scores`.
 
 ### Settings (`src/trendgames/settings.py`)
-YAML parser puro Python (sem PyYAML). Carrega `config/channel_profile.yaml` e `config/games_seed.yaml`.
+Pure Python YAML parser (no PyYAML). Loads `config/channel_profile.yaml` and `config/games_seed.yaml`.
 
 ### Data Models (`src/trendgames/domain.py`)
 Frozen dataclasses: `GameSeed`, `ChannelProfile`, `PlatformMetric`, `TrendScore`.
-`ChannelProfile` tem dois campos de canais de referência:
-- `reference_channels_youtube: list[str]` — handles YouTube (@markiplier, @alanzoka, etc.)
-- `reference_channels_tiktok: list[str]` — handles TikTok (@lohzao, @cofflei, etc.) — listados no config mas cobertura real requer TikTok API
+`ChannelProfile` has two reference channel fields:
+- `reference_channels_youtube: list[str]` — YouTube handles (@markiplier, @alanzoka, etc.)
+- `reference_channels_tiktok: list[str]` — TikTok handles (@lohzao, @cofflei, etc.) — listed in config but real coverage requires TikTok API
 
 ## Key Design Decisions
 
-- **Zero dependencies**: Tudo stdlib — YAML parser customizado, urllib para HTTP, sqlite3 para storage.
-- **Simulated data by default**: Pipeline completo funciona offline; APIs reais são opt-in.
-- **Snapshot-based**: Cada `ingest` cria um snapshot timestamped para comparação de crescimento.
-- **Dual scoring**: `recommend` usa scoring genérico de popularidade; `scout` usa scoring vertical.
-- **TikTok limitation**: TikTok não tem API pública. Cobertura de criadores TikTok pode ser importada via CSV.
+- **Zero dependencies**: Everything stdlib — custom YAML parser, urllib for HTTP, sqlite3 for storage.
+- **Simulated data by default**: Full pipeline works offline; real APIs are opt-in.
+- **Snapshot-based**: Each `ingest` creates a timestamped snapshot for growth comparison.
+- **Dual scoring**: `recommend` uses generic popularity scoring; `scout` uses vertical scoring.
+- **TikTok limitation**: TikTok has no public API. TikTok creator coverage can be imported via CSV.
 
 ## Configuration
 
-- `config/channel_profile.yaml`: Perfil do criador (Roberto Careca), tipos de jogo preferidos/evitados, canais de referência YouTube e TikTok
-- `config/games_seed.yaml`: Lista de jogos candidatos com tags, steam_appid, youtube_queries
-- `.env` / `YOUTUBE_API_KEY`: YouTube Data API v3 key (opcional, necessária para cobertura real dos canais YouTube)
+- `config/channel_profile.yaml`: Creator profile (Roberto Careca), preferred/avoided game types, YouTube and TikTok reference channels
+- `config/games_seed.yaml`: List of candidate games with tags, steam_appid, youtube_queries
+- `.env` / `YOUTUBE_API_KEY`: YouTube Data API v3 key (optional, required for real coverage of YouTube channels)
 
-## Canais de Referência
+## Reference Channels
 
-### YouTube (cobertura real com API key)
+### YouTube (real coverage with API key)
 @TexHS, @T3ddySQueGames, @capjoga, @DarkViperAU, @markiplier, @Sauceddie, @Jazzghost, @jacksepticeye, @CellbitLives, @alanzoka, @kksaiko, @SMii7Y
 
-### TikTok (listados no config, cobertura via CSV manual)
-@lohzao (Lozão — prioridade #1), @cofflei, @elcamacho24, @matsukiiii0, @sev7njogos
+### TikTok (listed in config, coverage via manual CSV)
+@lohzao (Lozão — priority #1), @cofflei, @elcamacho24, @matsukiiii0, @sev7njogos

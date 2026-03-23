@@ -1,40 +1,40 @@
-# Indice (Fase 0)
+# Index (Phase 0)
 
-1) Visao do produto
+1) Product vision
    - docs/01_visao_do_produto.md
 
-2) Definicao de "jogo em alta"
+2) Definition of "trending game"
    - docs/02_definicao_jogo_em_alta.md
 
-3) Fontes de dados por plataforma
+3) Data sources by platform
    - docs/03_fontes_de_dados_por_plataforma.md
 
-4) Estrategia de coleta e atualizacao
+4) Collection and update strategy
    - docs/04_estrategia_de_coleta_e_atualizacao.md
 
-5) Modelo de dados inicial
+5) Initial data model
    - docs/05_modelo_de_dados_inicial.md
 
-6) Logica de classificacao
+6) Ranking logic
    - docs/06_logica_de_classificacao.md
 
-7) Escopo do MVP (e fora do MVP)
+7) MVP scope (and out of scope)
    - docs/07_escopo_mvp.md
 
-8) Arquitetura proposta (texto/ASCII)
+8) Proposed architecture (text/ASCII)
    - docs/08_arquitetura_proposta.md
 
-9) Backlog inicial (epics -> features -> tasks)
+9) Initial backlog (epics -> features -> tasks)
    - docs/09_backlog_inicial.md
 
-10) Estrutura do repositorio GitHub
+10) GitHub repository structure
    - docs/10_estrutura_do_repositorio.md
 
-11) Roadmap de 2 a 4 semanas
+11) 2 to 4 week roadmap
    - docs/11_roadmap_2_a_4_semanas.md
 
-12) Riscos e limitacoes
+12) Risks and limitations
    - docs/12_riscos_e_limitacoes.md
 
-Opcional (inicio da Fase 1):
+Optional (start of Phase 1):
 - docs/90_fase1_scaffold_mvp.md

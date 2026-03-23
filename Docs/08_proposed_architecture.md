@@ -1,12 +1,12 @@
-# Arquitetura proposta (texto/ASCII)
+# Proposed architecture (text/ASCII)
 
-## Visao geral
-Arquitetura modular com 3 camadas:
-- Ingestion (conectores por plataforma)
-- Core (normalizacao, resolucao de jogos, scoring)
+## Overview
+Modular architecture with 3 layers:
+- Ingestion (connectors per platform)
+- Core (normalization, game resolution, scoring)
 - Serving (CLI/API)
 
-## Diagrama ASCII (MVP)
+## ASCII diagram (MVP)
 
 +-------------------+        +---------------------+        +---------------------+
 |  Schedulers/Jobs   |  --->  |   Ingestion Layer   |  --->  |   Normalization     |
@@ -36,18 +36,18 @@ Arquitetura modular com 3 camadas:
                                                  | CLI (MVP)    |   | API (optional) |
                                                  +--------------+   +----------------+
 
-## Decisoes arquiteturais (MVP)
-- Linguagem: Python (rapido para data e APIs).
-- Persistencia: SQLite (simples, local, versionavel por migrations basicas).
-- Jobs: execucao local via cron ou GitHub Actions (se quiser rodar em repo).
-- Config: YAML para perfil do canal + chaves via env vars.
+## Architectural decisions (MVP)
+- Language: Python (fast for data and APIs).
+- Persistence: SQLite (simple, local, versionable with basic migrations).
+- Jobs: local execution via cron or GitHub Actions (if you want to run in a repo).
+- Config: YAML for channel profile + keys via env vars.
 
-## Evolucao (V1)
-- Separar servico de ingestion (fila) e API.
-- Postgres e jobs com worker (ex.: Celery/RQ).
-- Dashboard (Next.js) consumindo API.
+## Evolution (V1)
+- Separate ingestion service (queue) and API.
+- Postgres and jobs with a worker (e.g.: Celery/RQ).
+- Dashboard (Next.js) consuming API.
 
-## Evolucao (V2)
-- Feature store + embeddings + recomendacao personalizada.
-- Alertas e notificacoes.
-- Multiusuario e multi-canais.
+## Evolution (V2)
+- Feature store + embeddings + personalized recommendations.
+- Alerts and notifications.
+- Multi-user and multi-channel.
